@@ -6,3 +6,4 @@ b = [2,1,2]
 print(a)
 print(np.arange(3))
 print(a[np.arange(3),b])
+print(np.logspace(-10, 10, 10))
