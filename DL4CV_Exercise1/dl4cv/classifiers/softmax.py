@@ -30,6 +30,31 @@ def softmax_loss_naive(W, X, y, reg):
     # regularization!                                                           #
     #############################################################################
     pass
+
+    def calculate_softmax(cls,exp_score_vector, softmax_denominator):
+        return exp_score_vector[cls]/softmax_denominator;
+
+    for i, data_row in enumerate(X):
+        score_or_prediction_vector = data_row.dot(W)
+        normalized_score = score_or_prediction_vector - np.max(score_or_prediction_vector)
+        exp_score_vector = np.exp(normalized_score)
+        softmax_denominator = np.sum(exp_score_vector)
+        actual_sample_class = y[i]
+        softmax = calculate_softmax(actual_sample_class,exp_score_vector,softmax_denominator)
+        loss += -np.log(softmax)
+
+        # gradient
+        for j in range(np.shape(W)[1]):
+            softmax = calculate_softmax(j,exp_score_vector,softmax_denominator)
+            tnj = 1 if j == y[i] else 0
+            dwj = (softmax - tnj)*data_row
+            dW[:, j] += dwj
+
+    num_of_data = np.shape(X)[0]
+    loss = loss / num_of_data
+    loss += 0.5*reg*np.sum(W*W)
+    dW  = dW / num_of_data
+    dW = dW + reg*W
     #############################################################################
     #                          END OF YOUR CODE                                 #
     #############################################################################
@@ -54,6 +79,24 @@ def softmax_loss_vectorized(W, X, y, reg):
     # regularization!                                                           #
     #############################################################################
     pass
+    score_or_prediction_matrix = X.dot(W)
+    normalized_matrix = score_or_prediction_matrix - np.max(score_or_prediction_matrix, axis=1, keepdims=True)
+    exp_score_matrix = np.exp(normalized_matrix)
+    softmax_denominator_vector = np.sum(exp_score_matrix, axis=1, keepdims=True)
+    softmax_matrix = exp_score_matrix / softmax_denominator_vector
+    num_of_data = np.shape(X)[0]
+    softmax_vector = softmax_matrix[np.arange(num_of_data), y]
+    loss = np.sum(-np.log(softmax_vector))
+
+    # gradient
+    T = np.zeros_like(softmax_matrix)
+    T[np.arange(num_of_data), y] = 1
+    dW = X.T.dot(softmax_matrix-T)
+
+    loss = loss / num_of_data
+    loss += 0.5 * reg * np.sum(W * W)
+    dW = dW / num_of_data
+    dW = dW + reg * W
     #############################################################################
     #                          END OF YOUR CODE                                 #
     #############################################################################
