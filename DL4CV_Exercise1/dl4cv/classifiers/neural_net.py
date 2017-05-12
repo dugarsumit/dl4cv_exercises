@@ -75,7 +75,7 @@ class TwoLayerNet(object):
         # shape (N, C).                                                             #
         #############################################################################
         pass
-        data = self.forward_pass(X)
+        data = self.forward_pass(X,do_dropout=True)
         X_with_bias = data['X_with_bias']       # N,D+1
         W1_with_bias = data['W1_with_bias']     # D+1,H
         A1 = data['A1']                         # N,H
@@ -250,7 +250,7 @@ class TwoLayerNet(object):
         # TODO: Implement this function; it should be VERY simple!                #
         ###########################################################################
         pass
-        data = self.forward_pass(X)
+        data = self.forward_pass(X,do_dropout=False)
         pred_matrix = data['scores']
         y_pred = np.argmax(pred_matrix, axis=1)
         ###########################################################################
@@ -271,7 +271,12 @@ class TwoLayerNet(object):
         softmax_matrix = exp_score_matrix / softmax_denominator_vector
         return softmax_matrix
 
-    def forward_pass(self, X):
+    def droput(self, N, H):
+        dropout_percent = 0.20
+        dp = np.random.binomial([np.ones((N, H))], 1 - dropout_percent)[0] * (1.0 / (1 - dropout_percent))
+        return dp
+
+    def forward_pass(self, X, do_dropout):
         W1, b1 = self.params['W1'], self.params['b1']
         W2, b2 = self.params['W2'], self.params['b2']
         N, D = X.shape
@@ -282,6 +287,8 @@ class TwoLayerNet(object):
 
         A1 = X_with_bias.dot(W1_with_bias)          # N,H
         Z1 = self.ReLU(A1)                          # N,H
+        if (do_dropout):
+            Z1 = Z1*self.droput(N,H)
 
         Z1_with_bias = np.column_stack((Z1, ones))  # N,H+1
         W2_with_bias = np.row_stack((W2, b2))       # H+1,C
