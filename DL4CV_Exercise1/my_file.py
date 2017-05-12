@@ -1,9 +1,8 @@
 import numpy as np
 
 a = np.array([[1,2,3],[4,5,6],[7,8,9]])
-print(a[[1,2]])
-b = [2,1,2]
-print(a)
-print(np.arange(3))
-print(a[np.arange(3),b])
-print(np.logspace(-5.5, -6, 15))
+b = [2, 1, 2]
+#print(np.hstack((a, b)))
+#print(np.append(a,b,axis=0))
+print(np.column_stack((a,b)))
+print(np.row_stack((a,b)))

@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import softmax as soft
 
 
 class TwoLayerNet(object):
@@ -66,15 +67,25 @@ class TwoLayerNet(object):
         W1, b1 = self.params['W1'], self.params['b1']
         W2, b2 = self.params['W2'], self.params['b2']
         N, D = X.shape
+        H, C = W2.shape
 
         # Compute the forward pass
-        scores = None
+        scores = np.zeros(shape=(N, C), dtype=float)
         #############################################################################
         # TODO: Perform the forward pass, computing the class scores for the input. #
         # Store the result in the scores variable, which should be an array of      #
         # shape (N, C).                                                             #
         #############################################################################
         pass
+        data = self.forward_pass(X)
+        X_with_bias = data['X_with_bias']       # N,D+1
+        W1_with_bias = data['W1_with_bias']     # D+1,H
+        A1 = data['A1']                         # N,H
+        Z1 = data['Z1']                         # N,H
+        Z1_with_bias = data['Z1_with_bias']     # N,H+1
+        W2_with_bias = data['W2_with_bias']     # H+1,C
+        scores = data['scores']                 # N,C
+
         #############################################################################
         #                              END OF YOUR CODE                             #
         #############################################################################
@@ -93,6 +104,11 @@ class TwoLayerNet(object):
         # regularization loss by 0.5                                                #
         #############################################################################
         pass
+        softmax_matrix = self.softmax(scores)       # N,C
+        softmax_vector = softmax_matrix[np.arange(N), y]
+        loss = np.sum(-np.log(softmax_vector)) / N
+        loss += 0.5 * reg * (np.sum(W1_with_bias * W1_with_bias) + np.sum(W2_with_bias * W2_with_bias))
+
         #############################################################################
         #                              END OF YOUR CODE                             #
         #############################################################################
@@ -105,6 +121,26 @@ class TwoLayerNet(object):
         # grads['W1'] should store the gradient on W1, and be a matrix of same size #
         #############################################################################
         pass
+        actual_label_matrix = np.zeros_like(softmax_matrix)
+        actual_label_matrix[np.arange(N), y] = 1
+
+        # derivative of loss/Error(E) wrt W2 (weights of second layer)
+        # delta error for output layer
+        dEbydZ1 = softmax_matrix - actual_label_matrix      # N,C
+        dW2_with_bias = Z1_with_bias.T.dot(dEbydZ1)         # H+1,C
+        dW2_with_bias = dW2_with_bias / N + reg * W2_with_bias
+
+        # derivative of loss/Error(E) wrt W1 (weights of first layer)
+        gradient_ReLU = self.dReLU(A1)              # N,H
+        sum = dEbydZ1.dot(W2.T)                     # N,H | we can ignore bias here
+        dEbydA1 = gradient_ReLU*sum                 # N,H | delta error for hidden layer
+        dW1_with_bias = X_with_bias.T.dot(dEbydA1)  # D+1,H
+        dW1_with_bias = dW1_with_bias / N + reg * W1_with_bias
+
+        grads['W1'] = dW1_with_bias[:D, :]
+        grads['b1'] = dW1_with_bias[-1]
+        grads['W2'] = dW2_with_bias[:H, :]
+        grads['b2'] = dW2_with_bias[-1]
         #############################################################################
         #                              END OF YOUR CODE                             #
         #############################################################################
@@ -149,6 +185,9 @@ class TwoLayerNet(object):
             # them in X_batch and y_batch respectively.                             #
             #########################################################################
             pass
+            indices = np.random.choice(np.arange(num_train), size=batch_size, replace=True)
+            X_batch = X[indices]
+            y_batch = y[indices]
             #########################################################################
             #                             END OF YOUR CODE                          #
             #########################################################################
@@ -164,6 +203,10 @@ class TwoLayerNet(object):
             # stored in the grads dictionary defined above.                         #
             #########################################################################
             pass
+            self.params['W1'] += -learning_rate * grads['W1']
+            self.params['b1'] += -learning_rate * grads['b1']
+            self.params['W2'] += -learning_rate * grads['W2']
+            self.params['b2'] += -learning_rate * grads['b2']
             #########################################################################
             #                             END OF YOUR CODE                          #
             #########################################################################
@@ -209,10 +252,48 @@ class TwoLayerNet(object):
         # TODO: Implement this function; it should be VERY simple!                #
         ###########################################################################
         pass
+        data = self.forward_pass(X)
+        pred_matrix = data['scores']
+        y_pred = np.argmax(pred_matrix, axis=1)
         ###########################################################################
         #                              END OF YOUR CODE                           #
         ###########################################################################
 
         return y_pred
 
+    def ReLU(self, A1):
+        return np.maximum(A1, np.zeros_like(A1))
 
+    def dReLU(self, A1):
+        return (A1 > 0).astype(float)
+
+    def softmax(self, scores):
+        exp_score_matrix = np.exp(scores)
+        softmax_denominator_vector = np.sum(exp_score_matrix, axis=1, keepdims=True)
+        softmax_matrix = exp_score_matrix / softmax_denominator_vector
+        return softmax_matrix
+
+    def forward_pass(self, X):
+        W1, b1 = self.params['W1'], self.params['b1']
+        W2, b2 = self.params['W2'], self.params['b2']
+        N, D = X.shape
+        H, C = W2.shape
+        ones = np.ones(N)
+        X_with_bias = np.column_stack((X, ones))    # N,D+1
+        W1_with_bias = np.row_stack((W1, b1))       # D+1,H
+
+        A1 = X_with_bias.dot(W1_with_bias)          # N,H
+        Z1 = self.ReLU(A1)                          # N,H
+
+        Z1_with_bias = np.column_stack((Z1, ones))  # N,H+1
+        W2_with_bias = np.row_stack((W2, b2))       # H+1,C
+        scores = Z1_with_bias.dot(W2_with_bias)     # N,C
+        return {
+            'X_with_bias': X_with_bias,
+            'W1_with_bias': W1_with_bias,
+            'A1': A1,
+            'Z1': Z1,
+            'Z1_with_bias': Z1_with_bias,
+            'W2_with_bias': W2_with_bias,
+            'scores': scores
+        }

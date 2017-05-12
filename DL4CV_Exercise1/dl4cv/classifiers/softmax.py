@@ -89,9 +89,9 @@ def softmax_loss_vectorized(W, X, y, reg):
     loss = np.sum(-np.log(softmax_vector))
 
     # gradient
-    T = np.zeros_like(softmax_matrix)
+    T = np.zeros_like(softmax_matrix) #T is the actual lable matrix
     T[np.arange(num_of_data), y] = 1
-    dW = X.T.dot(softmax_matrix-T)
+    dW = X.T.dot(softmax_matrix-T) # gradient with respect to weights
 
     loss = loss / num_of_data
     loss += 0.5 * reg * np.sum(W * W)
