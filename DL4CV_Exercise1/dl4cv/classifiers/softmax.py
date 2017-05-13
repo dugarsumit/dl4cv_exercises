@@ -81,6 +81,11 @@ def softmax_loss_vectorized(W, X, y, reg):
     pass
     score_or_prediction_matrix = X.dot(W)
     normalized_matrix = score_or_prediction_matrix - np.max(score_or_prediction_matrix, axis=1, keepdims=True)
+
+    # for overflow handling of exp
+    max_score = np.max(normalized_matrix, axis=1)
+    normalized_matrix = (normalized_matrix.transpose() - max_score).transpose()
+
     exp_score_matrix = np.exp(normalized_matrix)
     softmax_denominator_vector = np.sum(exp_score_matrix, axis=1, keepdims=True)
     softmax_matrix = exp_score_matrix / softmax_denominator_vector

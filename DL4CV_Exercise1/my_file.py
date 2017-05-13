@@ -1,13 +1,13 @@
 import numpy as np
+from collections import Counter
 
 a = np.array([[1,2,3],[4,5,6],[7,8,9]])
 b = [2, 1, 2]
-print(a)
-a[:,[0,2]] = 10
-a[np.arange(a.shape[0]),1]=0
-print(a)
-#print(np.logspace(-1, -0.3, 15))
-
-c = np.random.binomial([np.ones((5,4))],1)[0]
+a = Counter({'a':1,'b':2})
+b = Counter({'a':1,'b':2})
+c = {'d':1,'s':5}
 print(c)
-print(np.random.choice(np.arange(4),size=2))
+c = dict(a+b)
+c.update((k,v/2) for k,v in c.items())
+print(np.logspace(0.1, 0.2, 15))
+print(1e-7)

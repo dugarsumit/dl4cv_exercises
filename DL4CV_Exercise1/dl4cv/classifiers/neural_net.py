@@ -104,6 +104,10 @@ class TwoLayerNet(object):
         pass
         softmax_matrix = self.softmax(scores)       # N,C
         softmax_vector = softmax_matrix[np.arange(N), y]
+
+        # for handling numerical errors
+        #softmax_vector = softmax_vector  + 0.000001
+
         loss = np.sum(-np.log(softmax_vector)) / N
         loss += 0.5 * reg * (np.sum(W1_with_bias * W1_with_bias) + np.sum(W2_with_bias * W2_with_bias))
 
@@ -266,25 +270,41 @@ class TwoLayerNet(object):
         return (A1 > 0).astype(float)
 
     def softmax(self, scores):
+
         exp_score_matrix = np.exp(scores)
+
+        # handling numerical issues
+        # max_score = np.max(exp_score_matrix, axis=1)
+        # exp_score_matrix = (exp_score_matrix.transpose() - max_score).transpose()
+
+
         softmax_denominator_vector = np.sum(exp_score_matrix, axis=1, keepdims=True)
         softmax_matrix = exp_score_matrix / softmax_denominator_vector
         return softmax_matrix
 
     def droput(self, N, H):
-        dropout_percent = 0.20
+        dropout_percent = 0.25
         dp = np.random.binomial([np.ones((N, H))], 1 - dropout_percent)[0] * (1.0 / (1 - dropout_percent))
         return dp
 
     def forward_pass(self, X, do_dropout):
+        import scipy.stats.mstats as spy
+
         W1, b1 = self.params['W1'], self.params['b1']
         W2, b2 = self.params['W2'], self.params['b2']
         N, D = X.shape
         H, C = W2.shape
         ones = np.ones(N)
+        if np.isnan(W1).any():
+            W1 = np.nan_to_num(W1)
+        if np.isnan(W2).any():
+            W2 = np.nan_to_num(W2)
+        if np.isnan(b1).any():
+            b1 = np.nan_to_num(b1)
+        if np.isnan(b2).any():
+            b2 = np.nan_to_num(b2)
         X_with_bias = np.column_stack((X, ones))    # N,D+1
         W1_with_bias = np.row_stack((W1, b1))       # D+1,H
-
         A1 = X_with_bias.dot(W1_with_bias)          # N,H
         Z1 = self.ReLU(A1)                          # N,H
         if (do_dropout):
@@ -293,6 +313,14 @@ class TwoLayerNet(object):
         Z1_with_bias = np.column_stack((Z1, ones))  # N,H+1
         W2_with_bias = np.row_stack((W2, b2))       # H+1,C
         scores = Z1_with_bias.dot(W2_with_bias)     # N,C
+
+        #for overflow handling of exp
+        max_score = np.max(scores, axis=1)
+        scores = (scores.transpose() - max_score).transpose()
+
+        if np.isnan(scores).any():
+            scores = np.nan_to_num(scores)
+
         return {
             'X_with_bias': X_with_bias,
             'W1_with_bias': W1_with_bias,
