@@ -9,5 +9,5 @@ c = {'d':1,'s':5}
 print(c)
 c = dict(a+b)
 c.update((k,v/2) for k,v in c.items())
-print(np.logspace(0.1, 0.2, 15))
+print(np.logspace(5.9, 5.99, 15))
 print(1e-7)
