@@ -25,6 +25,10 @@ def affine_forward(x, w, b):
     # will need to reshape the input into rows.                                 #
     #############################################################################
     pass
+    D, M = w.shape
+    N = x.shape[0]
+    x_reshaped = x.reshape(N, D)
+    out = x_reshaped.dot(w) + b
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -35,7 +39,27 @@ def affine_forward(x, w, b):
 def affine_backward(dout, cache):
     """
     Computes the backward pass for an affine layer.
-  
+
+    http://cs231n.github.io/optimization-2/
+    dx, dw, db will have the same dimensions as x, w, b. Use this info to
+    identify which matrix to multiply.
+    affine_layer = wx + b
+    dx : w times upstream derivative
+    dw : x times upstream derivative
+    db : 1 times upstream derivative
+
+    W.T : transposed weight matrix (M, D). In this matrix every column [w11, w12, .....,w1m]
+    represents a weight vector corresponding to weights coming out from a particular
+    feature of input(i.e lets say xi)
+
+    dout : every row of this matrix is a vector of douts [do1, do2...,dom] corresponding
+    to every input sample. If our affine layer has m neurons then do1 is the sum of all
+    douts coming into the first neuron of our layer.
+
+    dx11 : derivative wrt to first feature of the first sample. This can be computed
+    by taking dot product of first row of dout matrix with first column of W.T matrix.
+
+
     Inputs:
     - dout: Upstream derivative, of shape (N, M)
     - cache: Tuple of:
@@ -53,6 +77,13 @@ def affine_backward(dout, cache):
     # TODO: Implement the affine backward pass.                                 #
     #############################################################################
     pass
+    D, M = w.shape
+    N = x.shape[0]
+    x_reshaped = x.reshape(N, D)
+    dx_reshaped = dout.dot(w.T)
+    dx = dx_reshaped.reshape(x.shape)
+    dw = x_reshaped.T.dot(dout)
+    db = np.sum(dout, axis=0)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -75,6 +106,7 @@ def relu_forward(x):
     # TODO: Implement the ReLU forward pass.                                    #
     #############################################################################
     pass
+    out = np.maximum(0, x)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -85,7 +117,11 @@ def relu_forward(x):
 def relu_backward(dout, cache):
     """
     Computes the backward pass for a layer of rectified linear units (ReLUs).
-  
+
+    Number of ins and outs from a ReLU layer are same. So for computing backward
+    pass we need to compute the local gradient(0 for elements less than 0 and 1 for rest)
+    and multiply it element wise to the gradients flowing from above.
+
     Input:
     - dout: Upstream derivatives, of any shape
     - cache: Input x, of same shape as dout
@@ -98,6 +134,9 @@ def relu_backward(dout, cache):
     # TODO: Implement the ReLU backward pass.                                   #
     #############################################################################
     pass
+    x[x > 0] = 1
+    x[x <= 0] = 0
+    dx = x * dout
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -313,6 +352,8 @@ def softmax_loss(x, y):
     N = x.shape[0]
     loss = -np.sum(np.log(probs[np.arange(N), y])) / N
     dx = probs.copy()
+    # Note this is dx and not dw.
+    # dw = (y-t)x
     dx[np.arange(N), y] -= 1
     dx /= N
     return loss, dx

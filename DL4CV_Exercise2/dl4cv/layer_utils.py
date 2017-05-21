@@ -27,3 +27,14 @@ def affine_relu_backward(dout, cache):
     da = relu_backward(dout, relu_cache)
     dx, dw, db = affine_backward(da, fc_cache)
     return dx, dw, db
+
+
+def softmax_prob(x):
+    """
+    :param x: Input data, of shape (N, C) where x[i, j] is the score for the jth class
+      for the ith input.
+    :return: softmax prob matrix
+    """
+    exp_sk = np.exp(x - np.max(x, axis=1, keepdims=True))
+    sum_exp_sj = np.sum(exp_sk, axis=1, keepdims=True)
+    return exp_sk / sum_exp_sj
