@@ -38,3 +38,16 @@ def softmax_prob(x):
     exp_sk = np.exp(x - np.max(x, axis=1, keepdims=True))
     sum_exp_sj = np.sum(exp_sk, axis=1, keepdims=True)
     return exp_sk / sum_exp_sj
+
+def initialize(input_dim, ouput_dim, weight_scale):
+    W = weight_scale * np.random.standard_normal((input_dim, ouput_dim))
+    b = np.zeros(ouput_dim)
+    return W, b
+
+def normed_weights(param, num_layers):
+    sum = []
+    for i in range(num_layers):
+        layer_id = str(i+1)
+        W = param['W'+layer_id]
+        sum.append(np.sum(W*W))
+    return sum

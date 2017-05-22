@@ -39,6 +39,7 @@ class TwoLayerNet(object):
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.num_classes = num_classes
+        self.weight_scale = weight_scale
         ############################################################################
         # TODO: Initialize the weights and biases of the two-layer net. Weights    #
         # should be initialized from a Gaussian with standard deviation equal to   #
@@ -48,10 +49,8 @@ class TwoLayerNet(object):
         # and biases using the keys 'W2' and 'b2'.                                 #
         ############################################################################
         pass
-        W1 = weight_scale * np.random.standard_normal((input_dim, hidden_dim))
-        b1 = np.zeros(hidden_dim)
-        W2 = weight_scale * np.random.standard_normal((hidden_dim, num_classes))
-        b2 = np.zeros(num_classes)
+        W1, b1 = initialize(input_dim, hidden_dim, self.weight_scale)
+        W2, b2 = initialize(hidden_dim, num_classes, self.weight_scale)
         self.params['W1'] = W1
         self.params['b1'] = b1
         self.params['W2'] = W2
@@ -175,10 +174,12 @@ class FullyConnectedNet(object):
         self.use_batchnorm = use_batchnorm
         self.use_dropout = dropout > 0
         self.reg = reg
+        # hidden + output layer = num_layers
         self.num_layers = 1 + len(hidden_dims)
         self.dtype = dtype
         self.params = {}
-
+        self.num_classes = num_classes
+        self.weight_scale = weight_scale
         ############################################################################
         # TODO: Initialize the parameters of the network, storing all values in    #
         # the self.params dictionary. Store weights and biases for the first layer #
@@ -192,6 +193,18 @@ class FullyConnectedNet(object):
         # parameters should be initialized to zero.                                #
         ############################################################################
         pass
+        layer_dims = []
+        layer_dims.append(input_dim)
+        layer_dims.extend(hidden_dims)
+        layer_dims.append(num_classes)
+
+        for i in range(self.num_layers):
+            input_size = layer_dims[i]
+            output_size = layer_dims[i+1]
+            layer_id = str(i+1)
+            W, b = initialize(input_size, output_size, self.weight_scale)
+            self.params['W'+layer_id] = W
+            self.params['b'+layer_id] = b
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -249,6 +262,21 @@ class FullyConnectedNet(object):
         # layer, etc.                                                              #
         ############################################################################
         pass
+        current_input = X
+        layer_related_data = []
+        for i in range(self.num_layers - 1):
+            layer_id = str(i + 1)
+            out, cache = affine_relu_forward(current_input,
+                                             self.params['W' + layer_id],
+                                             self.params['b' + layer_id])
+            current_input = out
+            layer_related_data.append(cache)
+
+        final_layer_out, final_layer_cache = affine_forward(current_input,
+                                                            self.params['W' + str(i + 2)],
+                                                            self.params['b' + str(i + 2)])
+        layer_related_data.append(final_layer_cache)
+        scores = final_layer_out
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -272,6 +300,36 @@ class FullyConnectedNet(object):
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
         pass
+        loss, dout = softmax_loss(scores, y)
+
+        # calculate regularized loss
+        squared_norm_weights = normed_weights(self.params, self.num_layers)
+        loss = loss + 0.5 * self.reg * np.sum(squared_norm_weights)
+
+        layer_related_data.reverse()
+
+        # backprop through last affine layer
+        last_layer_cache = layer_related_data[0]
+        current_dout, dW, db = affine_backward(dout, last_layer_cache)
+        # regularization
+        dW += self.reg * self.params['W' + str(self.num_layers)]
+
+        grads['W' + str(self.num_layers)] = dW
+        grads['b' + str(self.num_layers)] = db
+
+        # backprop through rest of the layers
+        for j, cache in enumerate(layer_related_data):
+            if j==0:
+                continue
+            next_dout, dW, db = affine_relu_backward(current_dout, cache)
+            current_dout = next_dout
+            layer_id = str(self.num_layers - j)
+            # regularization
+            dW += self.reg * self.params['W' + layer_id]
+
+            grads['W' + layer_id] = dW
+            grads['b' + layer_id] = db
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################

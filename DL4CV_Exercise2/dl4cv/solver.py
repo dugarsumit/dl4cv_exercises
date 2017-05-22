@@ -254,6 +254,8 @@ class Solver(object):
                 if val_acc > self.best_val_acc:
                     self.best_val_acc = val_acc
                     self.best_params = {}
+                    self.best_hyperparams = {'lr': self.optim_config['learning_rate'],
+                                             'ws': self.model.weight_scale}
                     for k, v in self.model.params.iteritems():
                         self.best_params[k] = v.copy()
 
