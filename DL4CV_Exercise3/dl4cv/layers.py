@@ -7,7 +7,7 @@ def conv_forward_naive(x, w, b, conv_param):
 
     The input consists of N data points, each with C channels, height H and width
     W. We convolve each input with F different filters, where each filter spans
-    all C channels and has height HH and width HH.
+    all C channels and has height HH and width WW.
 
     Input:
     - x: Input data of shape (N, C, H, W)
@@ -29,7 +29,18 @@ def conv_forward_naive(x, w, b, conv_param):
     # TODO: Implement the convolutional forward pass.                           #
     # Hint: you can use the function np.pad for padding.                        #
     #############################################################################
-
+    pad = conv_param['pad']
+    stride = conv_param['stride']
+    N, C, H, W = x.shape
+    F, C, HF, WF = w.shape
+    H_out = 1 + (H + 2 * pad - HF) / stride
+    W_out = 1 + (W + 2 * pad - WF) / stride
+    X_col = im2col(x, HF, WF, stride, pad)
+    W_row = w.reshape(F, -1)
+    b = b.reshape(-1, 1)
+    out = W_row.dot(X_col) + b
+    out = out.reshape(F, N, H_out, W_out)
+    out = out.transpose(1, 0, 2, 3)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -54,7 +65,22 @@ def conv_backward_naive(dout, cache):
     #############################################################################
     # TODO: Implement the convolutional backward pass.                          #
     #############################################################################
+    x, w, b, conv_param = cache
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    F, C, HF, WF = w.shape
+    # since axis=1 corresponds to the number of filters and our biases go into
+    # every filter, so we sum along the rest of the axis.
+    db = np.sum(dout, axis = (0, 2, 3))
 
+    X_col = im2col(x, HF, WF, stride, pad)
+    dout_reshaped = dout.transpose(1, 0, 2, 3).reshape(F, -1)
+    dw = dout_reshaped.dot(X_col.T)
+    dw = dw.reshape(w.shape)
+
+    w_reshape = w.reshape(F, -1)
+    dx_col = w_reshape.T.dot(dout_reshaped)
+    dx = col2im(dx_col, x, HF, WF, stride, pad)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -80,7 +106,18 @@ def max_pool_forward_naive(x, pool_param):
     #############################################################################
     # TODO: Implement the max pooling forward pass                              #
     #############################################################################
-
+    N, C, H, W = x.shape
+    stride = pool_param['stride']
+    HP = pool_param['pool_height']
+    WP = pool_param['pool_width']
+    H_out = (H - HP)/stride + 1
+    W_out = (W - WP)/stride + 1
+    C_out = C
+    x_reshaped = x.reshape(N*C, 1, H, W)
+    x_col = im2col(x_reshaped, HP, WP, stride, pad = 0)
+    maxIdx = np.argmax(x_col, axis = 0)
+    out = x_col[maxIdx, range(maxIdx.size)]
+    out = out.reshape(N, C_out, H_out, W_out)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -103,7 +140,18 @@ def max_pool_backward_naive(dout, cache):
     #############################################################################
     # TODO: Implement the max pooling backward pass                             #
     #############################################################################
-
+    x, maxIdx, pool_param = cache
+    N, C, H, W = x.shape
+    stride = pool_param['stride']
+    HP = pool_param['pool_height']
+    WP = pool_param['pool_width']
+    x_reshaped = x.reshape(N * C, 1, H, W)
+    x_col = im2col(x_reshaped, HP, WP, stride, pad = 0)
+    dx_col = np.zeros_like(x_col)
+    dout_flat = dout.flatten()
+    dx_col[maxIdx, range(maxIdx.size)] = dout_flat
+    dx = col2im(dx_col, x_reshaped, HP, WP, stride, pad=0)
+    dx = dx.reshape(x.shape)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -317,3 +365,35 @@ def spatial_batchnorm_backward(dout, cache):
   #############################################################################
 
   return dx, dgamma, dbeta
+
+
+def im2col(x, HF, WF, stride=1, pad=1):
+    padded_x = np.pad(x, pad_width = ((0, 0), (0, 0), (pad, pad), (pad, pad)),
+                      mode = 'constant', constant_values = 0)
+    N, C, H, W = padded_x.shape
+    X_col = []
+    for n in range(N):
+        for h in range(0, H - HF + 1, stride):
+            for wi in range(0, W - WF + 1, stride):
+                patch = padded_x[n, :, h:h + HF, wi:wi + WF]
+                patch_flat = patch.flatten()
+                X_col.append(patch_flat)
+    X_col = np.array(X_col)
+    return X_col.T
+
+def col2im(X_col, x, HF, WF, stride=1, pad=1):
+    N, C, H, W = x.shape
+    H_padded = H + 2*pad
+    W_padded = W + 2*pad
+    x_padded = np.zeros((N, C, H_padded, W_padded))
+    c_index = 0
+    for n in range(N):
+        for h in range(0, H_padded-HF+1, stride):
+            for wi in range(0, W_padded-WF+1, stride):
+                patch = X_col[:, c_index]
+                patch_reshaped = patch.reshape(C, HF, WF)
+                x_padded[n, :, h:h + HF, wi:wi + WF] += patch_reshaped
+                c_index += 1
+    if pad == 0:
+        return x_padded
+    return x_padded[:, :, pad:-pad, pad:-pad]
