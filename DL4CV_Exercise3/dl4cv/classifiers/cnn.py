@@ -2,6 +2,7 @@ import os
 
 import torch
 import torch.nn as nn
+import numpy as np
 import torch.nn.functional as F
 
 
@@ -45,7 +46,32 @@ class ThreeLayerCNN(nn.Module):
         # "same" padding which can be derived from the kernel size and its weights #
         # should be scaled. Layers should have a bias if possible.                 #
         ############################################################################
-
+        out_height = height
+        pad = ((out_height - 1)*stride - height + kernel_size)/2
+        input_l2 = num_filters*(height/pool)*(width/pool)
+        input_l3 = hidden_dim
+        conv_weights = nn.Parameter(
+            weight_scale*torch.randn(num_filters, channels, kernel_size, kernel_size))
+        self.l1 = nn.Sequential()
+        conv = nn.Conv2d(in_channels = channels,
+                         out_channels = num_filters,
+                         kernel_size = kernel_size,
+                         stride = stride,
+                         padding = pad)
+        #conv.weight = nn.Parameter(weight_scale * conv.weight.data)
+        self.l1.add_module("conv", conv)
+        self.l1.add_module("relu", nn.ReLU())
+        self.l1.add_module("max_pool", nn.MaxPool2d(kernel_size = pool))
+        self.l2 = nn.Sequential(
+            nn.Linear(in_features = input_l2,
+                      out_features = hidden_dim),
+            nn.Dropout(p = dropout),
+            nn.ReLU()
+        )
+        self.l3 = nn.Sequential(
+            nn.Linear(in_features = input_l3,
+                      out_features = num_classes)
+        )
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -65,12 +91,15 @@ class ThreeLayerCNN(nn.Module):
         # Have a look at the Variable.view function to make the transition from    #
         # convolutional to fully connected layers.                                 #
         ############################################################################
-
+        out_l1 = self.l1(x)
+        out_l1 = out_l1.view(out_l1.size(0), -1)
+        out_l2 = self.l2(out_l1)
+        out = self.l3(out_l2)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
 
-        return x
+        return out
 
     def save(self, path):
         """

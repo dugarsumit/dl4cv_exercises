@@ -72,6 +72,7 @@ def conv_backward_naive(dout, cache):
     # since axis=1 corresponds to the number of filters and our biases go into
     # every filter, so we sum along the rest of the axis.
     db = np.sum(dout, axis = (0, 2, 3))
+    db = db.reshape(-1, 1)
 
     X_col = im2col(x, HF, WF, stride, pad)
     dout_reshaped = dout.transpose(1, 0, 2, 3).reshape(F, -1)
@@ -100,7 +101,7 @@ def max_pool_forward_naive(x, pool_param):
 
     Returns a tuple of:
     - out: Output data
-    - cache: (x, pool_param) for the backward pass
+    - cache: (x, maxIdx, pool_param) for the backward pass with maxIdx, of shape (N, C', H', W', 2)
     """
     out = None
     #############################################################################
@@ -110,14 +111,39 @@ def max_pool_forward_naive(x, pool_param):
     stride = pool_param['stride']
     HP = pool_param['pool_height']
     WP = pool_param['pool_width']
+    H_out = (H - HP) / stride + 1
+    W_out = (W - WP) / stride + 1
+    C_out = C
+    out = np.zeros((N, C_out, H_out, W_out))
+    maxIdx = np.zeros((N, C_out, H_out, W_out, 2), dtype = np.int8)
+    for n in range(N):
+        for c in range(C):
+            for h in range(0, H-HP+1, stride):
+                for wi in range(0, W-WP+1, stride):
+                    patch = x[n, c, h:h+HP, wi:wi+WP]
+                    max_value = np.max(patch)
+                    out[n, c, h/stride, wi/stride] = max_value
+                    max_idy, max_idx = np.unravel_index(patch.argmax(), patch.shape)
+                    maxIdx[n, c, h/stride, wi/stride, :] = [int(h + max_idy), int(wi + max_idx)]
+    #print(maxIdx)
+    """
+    N, C, H, W = x.shape
+    stride = pool_param['stride']
+    HP = pool_param['pool_height']
+    WP = pool_param['pool_width']
     H_out = (H - HP)/stride + 1
     W_out = (W - WP)/stride + 1
     C_out = C
     x_reshaped = x.reshape(N*C, 1, H, W)
     x_col = im2col(x_reshaped, HP, WP, stride, pad = 0)
-    maxIdx = np.argmax(x_col, axis = 0)
-    out = x_col[maxIdx, range(maxIdx.size)]
+    maxIdx_flat = np.argmax(x_col, axis = 0)
+    out = x_col[maxIdx_flat, range(maxIdx_flat.size)]
     out = out.reshape(N, C_out, H_out, W_out)
+    #---------
+    maxIdx_flat = np.insert(maxIdx_flat, 0 , maxIdx_flat)
+    maxIdx = maxIdx_flat.reshape(N, C_out, H_out, W_out, 2)
+    #---------
+    """
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -136,7 +162,6 @@ def max_pool_backward_naive(dout, cache):
     Returns:
     - dx: Gradient with respect to x
     """
-    dx = None
     #############################################################################
     # TODO: Implement the max pooling backward pass                             #
     #############################################################################
@@ -145,13 +170,44 @@ def max_pool_backward_naive(dout, cache):
     stride = pool_param['stride']
     HP = pool_param['pool_height']
     WP = pool_param['pool_width']
+    H_out = (H - HP) / stride + 1
+    W_out = (W - WP) / stride + 1
+    C_out = C
+    dx = np.zeros((N, C, H, W))
+    print(maxIdx)
+    print(stride)
+    print(HP)
+    print(WP)
+    print(dx.shape)
+    print(dout.shape)
+    print(maxIdx.shape)
+    for n in range(N):
+        for c in range(C_out):
+            for h in range(H_out):
+                for wi in range(W_out):
+                    gradient = dout[n, c, h, wi]
+                    pos = maxIdx[n, c, h, wi, :]
+                    print(pos)
+                    dx[n, c, pos[0], pos[1]] = gradient
+    """
+    x, maxIdx, pool_param = cache
+    N, C, H, W = x.shape
+    stride = pool_param['stride']
+    HP = pool_param['pool_height']
+    WP = pool_param['pool_width']
+    H_out = (H - HP) / stride + 1
+    W_out = (W - WP) / stride + 1
+    C_out = C
+    # This flattening can be avoided just be ignoring the current shape of maxIdx
+    maxIdx_flat = maxIdx.flatten()[:N*C_out*H_out*W_out]
     x_reshaped = x.reshape(N * C, 1, H, W)
     x_col = im2col(x_reshaped, HP, WP, stride, pad = 0)
     dx_col = np.zeros_like(x_col)
     dout_flat = dout.flatten()
-    dx_col[maxIdx, range(maxIdx.size)] = dout_flat
+    dx_col[maxIdx_flat, range(maxIdx_flat.size)] = dout_flat
     dx = col2im(dx_col, x_reshaped, HP, WP, stride, pad=0)
     dx = dx.reshape(x.shape)
+    """
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################

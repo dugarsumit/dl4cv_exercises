@@ -2,6 +2,7 @@ from random import shuffle
 import numpy as np
 
 import torch
+import torch.nn as nn
 from torch.autograd import Variable
 
 
@@ -64,7 +65,43 @@ class Solver(object):
         #   [Epoch 1/5] VAL   acc/loss: 0.539/1.310                                #
         #   ...                                                                    #
         ############################################################################
+        # Loss and Optimizer
+        for epoch in range(num_epochs):
+            total_predictions = 0
+            correct_predictions = 0
+            for itr, (x, y) in enumerate(train_loader):
+                inputs = Variable(x)
+                labels = Variable(y)
+                optim.zero_grad()
+                pred_labels = model.forward(inputs)
+                loss = self.loss_func(pred_labels, labels)
+                self.train_loss_history.append(loss.data[0])
+                total_predictions += labels.size(0)
+                _, predicted = torch.max(pred_labels.data, 1)
+                correct_predictions += (predicted == y).sum()
+                loss.backward()
+                optim.step()
+                if (itr+1) % log_nth==0:
+                    print('[Iteration %d/%d] TRAIN loss: %.4f' %(itr+1, iter_per_epoch, loss.data[0]))
 
+            train_acc = float(correct_predictions)/total_predictions
+            self.train_acc_history.append(train_acc)
+            print('[Epoch %d/%d] TRAIN acc/loss: %.4f/%.4f' %(epoch+1, num_epochs, train_acc, loss.data[0]))
+
+            total_predictions = 0
+            correct_predictions = 0
+            for itr, (x, y) in enumerate(val_loader):
+                inputs = Variable(x)
+                labels = Variable(y)
+                pred_labels = model.forward(inputs)
+                loss = self.loss_func(pred_labels, labels)
+                total_predictions += labels.size(0)
+                _, predicted = torch.max(pred_labels.data, 1)
+                correct_predictions += (predicted == y).sum()
+            val_acc = float(correct_predictions) / total_predictions
+            self.val_acc_history.append(val_acc)
+            print('[Epoch %d/%d] VAL acc/loss: %.4f/%.4f'
+                  %(epoch + 1, num_epochs, val_acc, loss.data[0]))
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
