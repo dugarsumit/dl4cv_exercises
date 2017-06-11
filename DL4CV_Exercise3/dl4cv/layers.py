@@ -72,6 +72,7 @@ def conv_backward_naive(dout, cache):
     # since axis=1 corresponds to the number of filters and our biases go into
     # every filter, so we sum along the rest of the axis.
     db = np.sum(dout, axis = (0, 2, 3))
+    #comment this line
     db = db.reshape(-1, 1)
 
     X_col = im2col(x, HF, WF, stride, pad)
@@ -124,7 +125,7 @@ def max_pool_forward_naive(x, pool_param):
                     max_value = np.max(patch)
                     out[n, c, h/stride, wi/stride] = max_value
                     max_idy, max_idx = np.unravel_index(patch.argmax(), patch.shape)
-                    maxIdx[n, c, h/stride, wi/stride, :] = [int(h + max_idy), int(wi + max_idx)]
+                    maxIdx[n, c, h/stride, wi/stride, :] = [int(max_idy), int(max_idx)]
     #print(maxIdx)
     """
     N, C, H, W = x.shape
@@ -174,21 +175,13 @@ def max_pool_backward_naive(dout, cache):
     W_out = (W - WP) / stride + 1
     C_out = C
     dx = np.zeros((N, C, H, W))
-    print(maxIdx)
-    print(stride)
-    print(HP)
-    print(WP)
-    print(dx.shape)
-    print(dout.shape)
-    print(maxIdx.shape)
     for n in range(N):
         for c in range(C_out):
             for h in range(H_out):
                 for wi in range(W_out):
                     gradient = dout[n, c, h, wi]
                     pos = maxIdx[n, c, h, wi, :]
-                    print(pos)
-                    dx[n, c, pos[0], pos[1]] = gradient
+                    dx[n, c, pos[0]+h*stride, pos[1]+wi*stride] = gradient
     """
     x, maxIdx, pool_param = cache
     N, C, H, W = x.shape

@@ -53,13 +53,14 @@ class ThreeLayerCNN(nn.Module):
         conv_weights = nn.Parameter(
             weight_scale*torch.randn(num_filters, channels, kernel_size, kernel_size))
         self.l1 = nn.Sequential()
-        conv = nn.Conv2d(in_channels = channels,
+        self.conv = nn.Conv2d(in_channels = channels,
                          out_channels = num_filters,
                          kernel_size = kernel_size,
                          stride = stride,
                          padding = pad)
-        #conv.weight = nn.Parameter(weight_scale * conv.weight.data)
-        self.l1.add_module("conv", conv)
+        #self.conv.weight = nn.Parameter(weight_scale * self.conv.weight.data)
+        self.l1.add_module("conv", self.conv)
+        #self.l1.add_module("bn", nn.BatchNorm2d(num_filters))
         self.l1.add_module("relu", nn.ReLU())
         self.l1.add_module("max_pool", nn.MaxPool2d(kernel_size = pool))
         self.l2 = nn.Sequential(
@@ -111,3 +112,6 @@ class ThreeLayerCNN(nn.Module):
         """
         print 'Saving model... %s' % path
         torch.save(self, path)
+
+    def load(self, path):
+        return torch.load(map_location = path)

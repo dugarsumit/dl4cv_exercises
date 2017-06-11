@@ -37,6 +37,19 @@ labels_list = [{"id": -1, "name": "void",       "rgb_values": [0,   0,    0]},
                {"id": 22, "name": "boat",       "rgb_values": [192, 64,   0]}]
 
 
+def label_img_to_rgb(label_img):
+    label_img = np.squeeze(label_img)
+    labels = np.unique(label_img)
+    label_infos = [l for l in labels_list if l['id'] in labels]
+
+    label_img_rgb = np.array([label_img, label_img, label_img]).transpose(1,2,0)
+    for l in label_infos:
+        mask = label_img == l['id']
+        label_img_rgb[mask] = l['rgb_values']
+
+    return label_img_rgb.astype(np.uint8)
+
+
 class SegmentationData(data.Dataset):
 
     def __init__(self, root, image_list):
