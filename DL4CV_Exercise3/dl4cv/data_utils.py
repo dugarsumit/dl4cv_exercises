@@ -70,7 +70,9 @@ class SegmentationData(data.Dataset):
         target = Image.open(os.path.join(self.root, 'targets', img_id + '_GT.bmp'))
         target = center_crop(target)
         target = np.array(target, dtype=np.int64)
+        #print(target.shape) = 240,240,3
 
+        # This is for creating a similar array so that it can store labels
         target_labels = target[..., 0]
         for label in labels_list:
             mask = np.all(target == label['rgb_values'], axis=2)
