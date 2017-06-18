@@ -66,6 +66,7 @@ class Solver(object):
         #   ...                                                                    #
         ############################################################################
         # Loss and Optimizer
+        #torch.load('models/segmentation_network.model')
         for epoch in range(num_epochs):
             train_scores = []
             for itr, (x, y) in enumerate(train_loader):
@@ -112,4 +113,5 @@ class Solver(object):
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
+        #torch.save(model.state_dict(),'models/checkpoint.ckpt')
         print 'FINISH.'
